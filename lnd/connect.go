@@ -18,31 +18,13 @@ import (
 // ConnectFromLndConnectWithTimeout uses ConnectFromLndConnect to
 // connect to a lnd node but also aborts after a given timeout duration.
 func ConnectFromLndConnectWithTimeout(ctx context.Context, lndConnectUri string, timeout time.Duration) (*grpc.ClientConn, error) {
-	var (
-		connected = make(chan struct{}, 1)
-		errCh     = make(chan error, 1)
-		conn      *grpc.ClientConn
-		err       error
-	)
-	defer close(errCh)
-
-	go func() {
-		conn, err = ConnectFromLndConnect(ctx, lndConnectUri)
-		if err != nil {
-			errCh <- err
-		}
-		close(connected)
-	}()
-
-	select {
-	case <-connected:
-		return conn, err
-	case err := <-errCh:
+	ctx,cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	cc, err := ConnectFromLndConnect(ctx, lndConnectUri)
+	if err != nil {
 		return nil, err
-	case <-time.After(timeout):
-		close(connected)
-		return nil, fmt.Errorf("lnd connect timeout reached")
 	}
+	return cc,nil
 }
 
 // ConnectFromLndConnect uses a lnd connect uri string, containing

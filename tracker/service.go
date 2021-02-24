@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	config "github-bounty"
 	"github-bounty/lnd"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
@@ -25,7 +26,7 @@ type BountyIssue struct {
 	Number int64
 	CommentId int64
 	Pubkey string
-
+	TotalPayments int
 	LndConnect string
 	// map that matches rhash and whether they are paid
 	Payments map[string] bool
@@ -47,14 +48,15 @@ type IssueStore interface {
 }
 
 type IssueService struct {
+	cfg *config.Config
 	store          IssueStore
 	ghClient       GithubCommenter
 	lndClient		lnrpc.LightningClient
 	sync.Mutex
 }
 
-func NewIssueService(store IssueStore, ghClient GithubCommenter, lndClient	lnrpc.LightningClient) *IssueService {
-	srv := &IssueService{store: store, ghClient: ghClient, lndClient: lndClient}
+func NewIssueService(cfg *config.Config, store IssueStore, ghClient GithubCommenter, lndClient	lnrpc.LightningClient) *IssueService {
+	srv := &IssueService{cfg: cfg, store: store, ghClient: ghClient, lndClient: lndClient}
 
 	return srv
 }
@@ -70,6 +72,9 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 		bountyIssue = existingIssue
 		err = srv.ghClient.UpdateBountyComment(ctx, bountyIssue)
 	} else {
+		if lndconnect == "" {
+			lndconnect = srv.cfg.LndConnect
+		}
 		bountyIssue = &BountyIssue{
 			Id:     id,
 			Bounty: 0,
@@ -81,10 +86,23 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 			LndConnect: lndconnect,
 			Payments: make(map[string]bool),
 		}
-		err = srv.store.Add(ctx, bountyIssue)
+
+		clientconn, err := lnd.ConnectFromLndConnectWithTimeout(ctx, bountyIssue.LndConnect, time.Second*5)
 		if err != nil {
-			return nil,err
+			return nil, fmt.Errorf("unable to connect to remote lnd %v", err)
 		}
+		defer clientconn.Close()
+		remoteLndClient := lnrpc.NewLightningClient(clientconn)
+		inv, err := remoteLndClient.AddInvoice(ctx, &lnrpc.Invoice{})
+		if err != nil {
+			return nil, fmt.Errorf("unable to connect to get invoice from remote lnd %v", err)
+		}
+		payreq, err := srv.lndClient.DecodePayReq(ctx, &lnrpc.PayReqString{PayReq: inv.PaymentRequest})
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode invoice %v", err)
+		}
+		bountyIssue.Pubkey = payreq.Destination
+
 		commentId, err := srv.ghClient.AddComment(ctx, bountyIssue)
 		if err != nil {
 			return nil, err
@@ -93,7 +111,7 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 	}
 
 
-	err = srv.store.Update(ctx, bountyIssue)
+	err = srv.store.Add(ctx, bountyIssue)
 	if err != nil {
 		return nil,err
 	}
@@ -202,6 +220,7 @@ func (srv *IssueService) SettleInvoice(ctx context.Context, issue *BountyIssue, 
 	defer srv.Unlock()
 	fmt.Printf("settled invoice %v on %v \n", payreqString, issue)
 	issue.Bounty += sats
+	issue.TotalPayments += 1
 	issue.Payments[payreqString] = true
 	err := srv.store.Update(ctx, issue)
 	if err != nil {

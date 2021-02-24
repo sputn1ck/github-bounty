@@ -86,7 +86,7 @@ func run() error {
 		return err
 	}
 	githubClient := tracker.NewGithubService(cfg.HttpUrl,client)
-	issueService := tracker.NewIssueService(issueStore, githubClient, lndClient)
+	issueService := tracker.NewIssueService(cfg, issueStore, githubClient, lndClient)
 
 	fmt.Printf("recovering invoices \n")
 	err = issueService.RecoverPayments(ctx)

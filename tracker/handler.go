@@ -1,6 +1,7 @@
 package tracker
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
@@ -12,7 +13,7 @@ import (
 	"strings"
 )
 const (
-	webhookPath = "/webhooks"
+	webhookPath = "/wh"
 	invoicePath = "/invoice"
 
 	claimPath = "/claim"
@@ -113,9 +114,9 @@ func (wh *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, 
 	case github.IssuesPayload:
 		issue := payload.(github.IssuesPayload)
 		if issue.Action == "closed" {
-			err = wh.is.CloseIssue(r.Context(), issue.Issue.ID)
+			err = wh.is.CloseIssue(context.Background(), issue.Issue.ID)
 			if err != nil {
-				log.Printf("Error adding bounty issue %v", err)
+				log.Printf("Error closing bounty issue %v", err)
 				return
 			}
 		}
@@ -126,7 +127,7 @@ func (wh *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, 
 			return
 		}
 		names := strings.Split(issue.Repository.FullName, "/")
-		bi, err := wh.is.AddBountyIssue(r.Context(), issue.Issue.ID, issue.Issue.URL, names[0], issue.Repository.Name, issue.Issue.Number, lndConnectString)
+		bi, err := wh.is.AddBountyIssue(context.Background(), issue.Issue.ID, issue.Issue.URL, names[0], issue.Repository.Name, issue.Issue.Number, lndConnectString)
 
 		if err != nil {
 			log.Printf("Error adding bounty issue %v", err)

@@ -20,7 +20,7 @@ func NewGithubService(baseUrl string, client *github.Client) *GithubService {
 func (g *GithubService) AddComment(ctx context.Context, bountyIssue *BountyIssue) (int64, error) {
 
 	comment := &github.IssueComment{
-		Body: g.getComment(bountyIssue.Bounty, bountyIssue.Id),
+		Body: g.getComment(bountyIssue),
 	}
 	comment, _, err := g.client.Issues.CreateComment(ctx, bountyIssue.Owner, bountyIssue.Repo, int(bountyIssue.Number), comment)
 	if err != nil {
@@ -31,7 +31,7 @@ func (g *GithubService) AddComment(ctx context.Context, bountyIssue *BountyIssue
 
 func (g *GithubService) UpdateBountyComment(ctx context.Context, bountyIssue *BountyIssue) error {
 	comment := &github.IssueComment{
-		Body: g.getComment(bountyIssue.Bounty, bountyIssue.Id),
+		Body: g.getComment(bountyIssue),
 	}
 	comment, _, err := g.client.Issues.EditComment(ctx, bountyIssue.Owner, bountyIssue.Repo, bountyIssue.CommentId, comment)
 	if err != nil {
@@ -58,11 +58,12 @@ func (gs GithubService) closeComment(totalAmt int64) *string {
 	return &str
 }
 
-func (gs GithubService) getComment(totalAmt,id int64) *string{
+func (gs GithubService) getComment(bountyIssue *BountyIssue) *string{
 	str := fmt.Sprintf("" +
-		"Lightning Bounty has been activated" +
-		"\n \n Current Bounty is %v \n \n" +
-		"Increase the Bounty with %s", totalAmt, gs.getUrl(id))
+		"Lightning Bounty is active" +
+		"\n \n Benefactor: %s \n \n"+
+		"\n \n Current Bounty is %v from %v payments \n \n" +
+		"Donate Bounty with %s",bountyIssue.Pubkey, bountyIssue.Bounty,bountyIssue.TotalPayments, gs.getUrl(bountyIssue.Id))
 	return &str
 }
 
