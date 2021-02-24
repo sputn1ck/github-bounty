@@ -109,6 +109,31 @@ func (store *BountyIssueStore) Delete(ctx context.Context, id int64) error {
 
 	return tx.Commit()
 }
+func (u *BountyIssueStore) ListAll(ctx context.Context) ([]*BountyIssue, error) {
+	tx, err := u.db.Begin(false)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	b := tx.Bucket(bountyIssuesBucket)
+	if b == nil {
+		return nil, fmt.Errorf("bucket nil")
+	}
+	var payments []*BountyIssue
+	err = b.ForEach(func(k, v []byte) error {
+		payment := &BountyIssue{}
+		if err := json.Unmarshal(v, payment); err != nil {
+			return err
+		}
+		payments = append(payments, payment)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return payments, nil
+}
 
 func NewBountyIssueStore(db *bbolt.DB) (*BountyIssueStore, error) {
 	tx, err := db.Begin(true)

@@ -45,7 +45,7 @@ func (wh *WebhookHandler) StartHandler(address string) error {
 	router.POST(webhookPath, wh.handleWebhook)
 	router.POST(webhookPath+"/:lndconnect", wh.handleWebhook)
 
-	router.GET(invoicePath, wh.handleWebhook)
+	router.GET(invoicePath, wh.handleInvoice)
 
 	return http.ListenAndServe(address, router)
 }
@@ -119,7 +119,7 @@ func (wh *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, 
 				return
 			}
 		}
-		if issue.Action != "labeled" {
+		if issue.Action != "labeled" && issue.Action != "reopened" {
 			return
 		}
 		if !hasBountyLabel(issue) {
@@ -151,9 +151,24 @@ func hasBountyLabel(issuePayload github.IssuesPayload) bool {
 }
 
 func (wh *WebhookHandler) checkIps( r *http.Request) (bool, error) {
-	reqIp := net.ParseIP(strings.Split(r.RemoteAddr, ":")[0])
+	okay, err := checkRemoteIp(r.RemoteAddr, wh.ipRange)
+	if okay {
+		return true, nil
+	}
+	okay, err = checkRemoteIp(r.Header.Get("X-Forwarded-For"), wh.ipRange)
+	if okay {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return false,nil
 
-	for _,v := range wh.ipRange {
+}
+
+func checkRemoteIp(remoteAddress string, ipRange []string) (bool, error) {
+	reqIp := net.ParseIP(strings.Split(remoteAddress, ":")[0])
+	for _,v := range ipRange {
 		_, ipnet, err := net.ParseCIDR(v)
 		if err != nil {
 			return false, err
@@ -164,3 +179,6 @@ func (wh *WebhookHandler) checkIps( r *http.Request) (bool, error) {
 	}
 	return false,nil
 }
+
+
+

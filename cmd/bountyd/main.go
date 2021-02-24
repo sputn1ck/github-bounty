@@ -5,7 +5,6 @@ import (
 	"fmt"
 	config "github-bounty"
 	"github-bounty/lnd"
-	"github-bounty/payments"
 	"github-bounty/tracker"
 	bbolt2 "github.com/coreos/bbolt"
 	"github.com/google/go-github/v33/github"
@@ -59,8 +58,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	// creat lnd client
-	cc, err := lnd.ConnectFromLndConnectWithTimeout(ctx, cfg.LndConnect, time.Second * 10)
+	// create admin lnd client
+	cc, err := lnd.ConnectFromLndConnectWithTimeout(ctx, cfg.LndConnect, time.Second*10)
 	if err != nil {
 		return err
 	}
@@ -71,10 +70,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("unable to open token db: %v",  err)
 	}
-	paymentHandler,err := payments.NewPaymentHandler(lndClient, boltDb)
-	if err != nil {
-		return fmt.Errorf("unable to create payment handler: %v",  err)
-	}
+
 
 	issueStore, err := tracker.NewBountyIssueStore(boltDb)
 	if err != nil {
@@ -90,19 +86,13 @@ func run() error {
 		return err
 	}
 	githubClient := tracker.NewGithubService(cfg.HttpUrl,client)
-	issueService := tracker.NewIssueService(issueStore, githubClient, paymentHandler)
+	issueService := tracker.NewIssueService(issueStore, githubClient, lndClient)
 
 	fmt.Printf("recovering invoices \n")
-	err = paymentHandler.RecoverInvoices(ctx)
+	err = issueService.RecoverPayments(ctx)
 	if err != nil {
-		return fmt.Errorf("error recovering invoices: %v",  err)
+		return err
 	}
-	go func() {
-		err := paymentHandler.StartListening(ctx)
-		if err != nil {
-			log.Fatalf("error listening for invoices %v", err)
-		}
-	}()
 
 	webhookHandler := tracker.NewWebhookHandler(issueService, "secret", meta.Hooks)
 	go startHandler(webhookHandler, cfg.ListenAddress)
