@@ -66,7 +66,7 @@ func run() error {
 	defer cc.Close()
 	lndClient := lnrpc.NewLightningClient(cc)
 	// create boltdb
-	boltDb, err := bbolt2.Open("./db", 0600, nil)
+	boltDb, err := bbolt2.Open(cfg.DbFilePath, 0600, nil)
 	if err != nil {
 		return fmt.Errorf("unable to open token db: %v",  err)
 	}
