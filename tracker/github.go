@@ -42,7 +42,7 @@ func (g *GithubService) UpdateBountyComment(ctx context.Context, bountyIssue *Bo
 
 func (g *GithubService) CloseBountyComment(ctx context.Context, bountyIssue *BountyIssue) error {
 	comment := &github.IssueComment{
-		Body: g.closeComment(bountyIssue.Bounty),
+		Body: g.closeComment(bountyIssue),
 	}
 	comment, _, err := g.client.Issues.EditComment(ctx, bountyIssue.Owner, bountyIssue.Repo, bountyIssue.CommentId, comment)
 	if err != nil {
@@ -51,10 +51,10 @@ func (g *GithubService) CloseBountyComment(ctx context.Context, bountyIssue *Bou
 	return nil
 }
 
-func (gs GithubService) closeComment(totalAmt int64) *string {
+func (gs GithubService) closeComment(bountyIssue *BountyIssue) *string {
 	str := fmt.Sprintf("" +
 		"Issue has been closed" +
-		"\n \n Total bounty is %v", totalAmt)
+		"\n \n Total bounty for %s was %v", bountyIssue.Pubkey, bountyIssue.Bounty)
 	return &str
 }
 

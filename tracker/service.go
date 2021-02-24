@@ -70,7 +70,6 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 	if existingIssue != nil {
 		existingIssue.Active = true
 		bountyIssue = existingIssue
-		err = srv.ghClient.UpdateBountyComment(ctx, bountyIssue)
 	} else {
 		if lndconnect == "" {
 			lndconnect = srv.cfg.LndConnect
@@ -102,7 +101,10 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 			return nil, fmt.Errorf("unable to decode invoice %v", err)
 		}
 		bountyIssue.Pubkey = payreq.Destination
-
+		err = srv.store.Add(ctx, bountyIssue)
+		if err != nil {
+			return nil,err
+		}
 		commentId, err := srv.ghClient.AddComment(ctx, bountyIssue)
 		if err != nil {
 			return nil, err
@@ -110,11 +112,15 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 		bountyIssue.CommentId = commentId
 	}
 
-
-	err = srv.store.Add(ctx, bountyIssue)
+	err = srv.store.Update(ctx, bountyIssue)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
+	err = srv.ghClient.UpdateBountyComment(ctx, bountyIssue)
+	if err != nil {
+		return nil, err
+	}
+
 	return bountyIssue,nil
 }
 
