@@ -13,13 +13,17 @@ In order to use our hosted service you need to have a lnd node running with a pu
 1. create a lnd-connect string with invoice macaroon permissions i.e. `lndconnect -j --invoice`
 
 2. Create a webhook in your repo with `https://gh.donnerlab.com/wh/{lnd connect string without lndconnect://}`
+
 ![whsettings](./img/whsettings.jpg)
    
 3. Select individual events with only the issues tag
+
 ![eventsettings](./img/eventsettings.jpg)
    
 4. Your repo should now be actived. You can now add the 'bounty' label to any issue
+
 ![label](./img/label.jpg)
    
 5. The bot will comment and users can request invoices with the url (they can change the amount from the url)
+
 ![comment](./img/whsettings.jpg)
