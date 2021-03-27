@@ -1,6 +1,5 @@
 package config
 
-import "embed"
 
 var (
 	DefaultSecret = "secret"
@@ -9,8 +8,6 @@ var (
 
 	DefaultDbFilePath = "./db"
 
-	//go:embed dist/*
-	Webapp embed.FS
 )
 
 type Config struct {
