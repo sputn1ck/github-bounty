@@ -13,20 +13,21 @@ import (
 	"strconv"
 	"strings"
 )
+
 const (
-	webhookPath = "/wh"
-	invoicePath = "/invoiceraw"
+	webhookPath     = "/wh"
+	invoicePath     = "/invoiceraw"
 	invoicePagePath = "/invoice"
 
-	claimPath = "/claim"
-	amtkey = "amt"
+	claimPath  = "/claim"
+	amtkey     = "amt"
 	issueidkey = "issue_id"
 )
 
 type WebhookHandler struct {
-	is *IssueService
+	is      *IssueService
 	webhook *github.Webhook
-	tmpl *template.Template
+	tmpl    *template.Template
 
 	ipRange []string
 }
@@ -47,7 +48,7 @@ func (wh *WebhookHandler) SetupIpaddress(ip string) {
 
 }
 
-type InvoiceResponse struct{
+type InvoiceResponse struct {
 	Invoice string `json:"invoice"`
 }
 
@@ -70,31 +71,31 @@ func (wh *WebhookHandler) StartHandler(address string) error {
 func (wh *WebhookHandler) handleInvoice(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	query := r.URL.Query()
 	if len(query) != 2 {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid input, require %s and %s",amtkey, issueidkey))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid input, require %s and %s", amtkey, issueidkey))
 		return
 	}
 	amt := query.Get(amtkey)
 	issueId := query.Get(issueidkey)
 	if amt == "" || issueId == "" {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid input, require %s and %s",amtkey, issueidkey))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid input, require %s and %s", amtkey, issueidkey))
 		return
 	}
-	amtInt,err := strconv.Atoi(amt)
+	amtInt, err := strconv.Atoi(amt)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v", err))
 		return
 	}
-	issueIdInt,err := strconv.Atoi(issueId)
+	issueIdInt, err := strconv.Atoi(issueId)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v", err))
 		return
 	}
 	invoice, err := wh.is.GetBountyInvoice(r.Context(), int64(issueIdInt), int64(amtInt))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v", err))
 		return
 	}
-	writeOkResponse(w, &InvoiceResponse{Invoice:invoice})
+	writeOkResponse(w, &InvoiceResponse{Invoice: invoice})
 }
 
 func (wh *WebhookHandler) handleInvoicePage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -106,7 +107,7 @@ func (wh *WebhookHandler) handleInvoicePage(w http.ResponseWriter, r *http.Reque
 	data := InvoicePageData{Invoice: "gude"}
 	err := wh.tmpl.Execute(w, data)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v", err))
 		return
 	}
 }
@@ -114,24 +115,24 @@ func (wh *WebhookHandler) handleInvoicePage(w http.ResponseWriter, r *http.Reque
 func (wh *WebhookHandler) getInvoice(r *http.Request) (string, error) {
 	query := r.URL.Query()
 	if len(query) != 2 {
-		return "",fmt.Errorf("invalid input, require %s and %s",amtkey, issueidkey)
+		return "", fmt.Errorf("invalid input, require %s and %s", amtkey, issueidkey)
 	}
 	amt := query.Get(amtkey)
 	issueId := query.Get(issueidkey)
 	if amt == "" || issueId == "" {
-		return "",fmt.Errorf("invalid input, require %s and %s",amtkey, issueidkey)
+		return "", fmt.Errorf("invalid input, require %s and %s", amtkey, issueidkey)
 	}
-	amtInt,err := strconv.Atoi(amt)
+	amtInt, err := strconv.Atoi(amt)
 	if err != nil {
-		return "",fmt.Errorf("something went wrong %v",err)
+		return "", fmt.Errorf("something went wrong %v", err)
 	}
-	issueIdInt,err := strconv.Atoi(issueId)
+	issueIdInt, err := strconv.Atoi(issueId)
 	if err != nil {
-		return "",fmt.Errorf("something went wrong %v",err)
+		return "", fmt.Errorf("something went wrong %v", err)
 	}
 	invoice, err := wh.is.GetBountyInvoice(r.Context(), int64(issueIdInt), int64(amtInt))
 	if err != nil {
-		return "",fmt.Errorf("something went wrong %v",err)
+		return "", fmt.Errorf("something went wrong %v", err)
 	}
 	return invoice, nil
 }
@@ -141,7 +142,7 @@ func writeOkResponse(w http.ResponseWriter, res interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(res)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v", err))
 	}
 }
 
@@ -152,13 +153,13 @@ func writeError(w http.ResponseWriter, statuscode int, msg string) {
 
 func (wh *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	okay, err := wh.checkIps(r)
-	if err != nil  || !okay {
+	if err != nil || !okay {
 		return
 	}
 	lndConnectString := ps.ByName("lndconnect")
 	if lndConnectString != "" {
 		query := r.URL.Query()
-		lndConnectString = "lndconnect://"+lndConnectString +"?cert=" + query.Get("cert") + "&macaroon=" + query.Get("macaroon")
+		lndConnectString = "lndconnect://" + lndConnectString + "?cert=" + query.Get("cert") + "&macaroon=" + query.Get("macaroon")
 	}
 	payload, err := wh.webhook.Parse(r, github.IssuesEvent, github.LabelEvent)
 	if err != nil {
@@ -199,7 +200,7 @@ func (wh *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, 
 	}
 }
 func hasBountyLabel(issuePayload github.IssuesPayload) bool {
-	for _,v := range issuePayload.Issue.Labels {
+	for _, v := range issuePayload.Issue.Labels {
 		if v.Name == "bounty" {
 			return true
 		}
@@ -207,7 +208,7 @@ func hasBountyLabel(issuePayload github.IssuesPayload) bool {
 	return false
 }
 
-func (wh *WebhookHandler) checkIps( r *http.Request) (bool, error) {
+func (wh *WebhookHandler) checkIps(r *http.Request) (bool, error) {
 	okay, err := checkRemoteIp(r.RemoteAddr, wh.ipRange)
 	if okay {
 		return true, nil
@@ -219,23 +220,20 @@ func (wh *WebhookHandler) checkIps( r *http.Request) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return false,nil
+	return false, nil
 
 }
 
 func checkRemoteIp(remoteAddress string, ipRange []string) (bool, error) {
 	reqIp := net.ParseIP(strings.Split(remoteAddress, ":")[0])
-	for _,v := range ipRange {
+	for _, v := range ipRange {
 		_, ipnet, err := net.ParseCIDR(v)
 		if err != nil {
 			return false, err
 		}
 		if ipnet.Contains(reqIp) {
-			return true,nil
+			return true, nil
 		}
 	}
-	return false,nil
+	return false, nil
 }
-
-
-

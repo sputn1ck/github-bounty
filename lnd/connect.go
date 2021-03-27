@@ -13,18 +13,16 @@ import (
 	"time"
 )
 
-
-
 // ConnectFromLndConnectWithTimeout uses ConnectFromLndConnect to
 // connect to a lnd node but also aborts after a given timeout duration.
 func ConnectFromLndConnectWithTimeout(ctx context.Context, lndConnectUri string, timeout time.Duration) (*grpc.ClientConn, error) {
-	ctx,cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cc, err := ConnectFromLndConnect(ctx, lndConnectUri)
 	if err != nil {
 		return nil, err
 	}
-	return cc,nil
+	return cc, nil
 }
 
 // ConnectFromLndConnect uses a lnd connect uri string, containing
@@ -54,6 +52,7 @@ func ConnectFromLndConnect(ctx context.Context, lndConnectUri string) (*grpc.Cli
 
 	return grpc.DialContext(ctx, address, dialOpts...)
 }
+
 // newMacaroonCredential returns a copy of the passed macaroon wrapped in a
 // macaroonCredential struct which implements PerRPCCredentials.
 func newMacaroonCredential(m *macaroon.Macaroon) macaroonCredential {
@@ -89,7 +88,6 @@ func (m macaroonCredential) GetRequestMetadata(ctx context.Context,
 	md["macaroon"] = hex.EncodeToString(macBytes)
 	return md, nil
 }
-
 
 // UnmarshalLndConnectURI takes a lndconnect uri
 // (https://github.com/LN-Zap/lndconnect/blob/master/lnd_connect_uri.md)

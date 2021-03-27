@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	config "github.com/sputn1ck/github-bounty"
-	"github.com/sputn1ck/github-bounty/lnd"
-	"github.com/sputn1ck/github-bounty/tracker"
 	bbolt2 "github.com/coreos/bbolt"
 	"github.com/google/go-github/v33/github"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	config "github.com/sputn1ck/github-bounty"
+	"github.com/sputn1ck/github-bounty/lnd"
+	"github.com/sputn1ck/github-bounty/tracker"
 	"golang.org/x/oauth2"
 	"log"
 	"os"
@@ -27,7 +27,8 @@ import (
 // add to issue db
 // on close stop allowing payments to come in
 func main() {
-	err := run(); if err != nil{
+	err := run()
+	if err != nil {
 		log.Fatal(err)
 	}
 }
@@ -68,24 +69,23 @@ func run() error {
 	// create boltdb
 	boltDb, err := bbolt2.Open(cfg.DbFilePath, 0600, nil)
 	if err != nil {
-		return fmt.Errorf("unable to open token db: %v",  err)
+		return fmt.Errorf("unable to open token db: %v", err)
 	}
-
 
 	issueStore, err := tracker.NewBountyIssueStore(boltDb)
 	if err != nil {
-		return fmt.Errorf("unable to create issue store: %v",  err)
+		return fmt.Errorf("unable to create issue store: %v", err)
 	}
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: cfg.GithubAccessToken},
 	)
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
-	meta,_,err := client.APIMeta(ctx)
+	meta, _, err := client.APIMeta(ctx)
 	if err != nil {
 		return err
 	}
-	githubClient := tracker.NewGithubService(cfg.HttpUrl,client)
+	githubClient := tracker.NewGithubService(cfg.HttpUrl, client)
 	issueService := tracker.NewIssueService(cfg, issueStore, githubClient, lndClient)
 
 	fmt.Printf("recovering invoices \n")
@@ -94,9 +94,9 @@ func run() error {
 		return err
 	}
 
-	webhookHandler,err := tracker.NewWebhookHandler(issueService, "secret", meta.Hooks)
+	webhookHandler, err := tracker.NewWebhookHandler(issueService, "secret", meta.Hooks)
 	if err != nil {
-		return fmt.Errorf("error starting http handler %v",err)
+		return fmt.Errorf("error starting http handler %v", err)
 	}
 	go startHandler(webhookHandler, cfg.ListenAddress)
 	<-shutdown
@@ -110,4 +110,3 @@ func startHandler(webhookhandler *tracker.WebhookHandler, listenAddress string) 
 		log.Fatal(err)
 	}
 }
-

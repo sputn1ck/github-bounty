@@ -7,10 +7,9 @@ import (
 	"strconv"
 )
 
-
 type GithubService struct {
 	baseUrl string
-	client *github.Client
+	client  *github.Client
 }
 
 func NewGithubService(baseUrl string, client *github.Client) *GithubService {
@@ -24,7 +23,7 @@ func (g *GithubService) AddComment(ctx context.Context, bountyIssue *BountyIssue
 	}
 	comment, _, err := g.client.Issues.CreateComment(ctx, bountyIssue.Owner, bountyIssue.Repo, int(bountyIssue.Number), comment)
 	if err != nil {
-		return 0,err
+		return 0, err
 	}
 	return *comment.ID, nil
 }
@@ -52,22 +51,21 @@ func (g *GithubService) CloseBountyComment(ctx context.Context, bountyIssue *Bou
 }
 
 func (gs GithubService) closeComment(bountyIssue *BountyIssue) *string {
-	str := fmt.Sprintf("" +
-		"Issue has been closed" +
+	str := fmt.Sprintf(""+
+		"Issue has been closed"+
 		"\n \n Total bounty for %s was %v", bountyIssue.Pubkey, bountyIssue.Bounty)
 	return &str
 }
 
-func (gs GithubService) getComment(bountyIssue *BountyIssue) *string{
-	str := fmt.Sprintf("" +
-		"Lightning Bounty is active" +
+func (gs GithubService) getComment(bountyIssue *BountyIssue) *string {
+	str := fmt.Sprintf(""+
+		"Lightning Bounty is active"+
 		"\n \n Benefactor: %s \n \n"+
-		"\n \n Current Bounty is %v from %v payments \n \n" +
-		"Donate Bounty with %s",bountyIssue.Pubkey, bountyIssue.Bounty,bountyIssue.TotalPayments, gs.getUrl(bountyIssue.Id))
+		"\n \n Current Bounty is %v from %v payments \n \n"+
+		"Donate Bounty with %s", bountyIssue.Pubkey, bountyIssue.Bounty, bountyIssue.TotalPayments, gs.getUrl(bountyIssue.Id))
 	return &str
 }
 
 func (gs GithubService) getUrl(id int64) string {
-	return fmt.Sprintf(gs.baseUrl+"/invoice?%s=%s&%s=100",issueidkey,strconv.Itoa(int(id)),amtkey)
+	return fmt.Sprintf(gs.baseUrl+"/invoice?%s=%s&%s=100", issueidkey, strconv.Itoa(int(id)), amtkey)
 }
-

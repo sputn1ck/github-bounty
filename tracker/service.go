@@ -4,39 +4,39 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	config "github.com/sputn1ck/github-bounty"
-	"github.com/sputn1ck/github-bounty/lnd"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
+	config "github.com/sputn1ck/github-bounty"
+	"github.com/sputn1ck/github-bounty/lnd"
 	"google.golang.org/grpc"
 	"sync"
 	"time"
 )
-var(
+
+var (
 	InactiveError = fmt.Errorf("Issue is not active")
 )
 
 type BountyIssue struct {
-	Id     int64
-	Bounty int64
-	Url    string
-	Active bool
-	Owner string
-	Repo string
-	Number int64
-	CommentId int64
-	Pubkey string
+	Id            int64
+	Bounty        int64
+	Url           string
+	Active        bool
+	Owner         string
+	Repo          string
+	Number        int64
+	CommentId     int64
+	Pubkey        string
 	TotalPayments int
-	LndConnect string
+	LndConnect    string
 	// map that matches rhash and whether they are paid
-	Payments map[string] bool
+	Payments map[string]bool
 }
-
 
 type GithubCommenter interface {
 	AddComment(ctx context.Context, bountyIssue *BountyIssue) (int64, error)
-	UpdateBountyComment(ctx context.Context,  bountyIssue *BountyIssue) error
-	CloseBountyComment(ctx context.Context,  bountyIssue *BountyIssue) error
+	UpdateBountyComment(ctx context.Context, bountyIssue *BountyIssue) error
+	CloseBountyComment(ctx context.Context, bountyIssue *BountyIssue) error
 }
 
 type IssueStore interface {
@@ -48,14 +48,14 @@ type IssueStore interface {
 }
 
 type IssueService struct {
-	cfg *config.Config
-	store          IssueStore
-	ghClient       GithubCommenter
-	lndClient		lnrpc.LightningClient
+	cfg       *config.Config
+	store     IssueStore
+	ghClient  GithubCommenter
+	lndClient lnrpc.LightningClient
 	sync.Mutex
 }
 
-func NewIssueService(cfg *config.Config, store IssueStore, ghClient GithubCommenter, lndClient	lnrpc.LightningClient) *IssueService {
+func NewIssueService(cfg *config.Config, store IssueStore, ghClient GithubCommenter, lndClient lnrpc.LightningClient) *IssueService {
 	srv := &IssueService{cfg: cfg, store: store, ghClient: ghClient, lndClient: lndClient}
 
 	return srv
@@ -75,15 +75,15 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 			lndconnect = srv.cfg.LndConnect
 		}
 		bountyIssue = &BountyIssue{
-			Id:     id,
-			Bounty: 0,
-			Url:    link,
-			Active: true,
-			Owner: owner,
-			Repo: repo,
-			Number: number,
+			Id:         id,
+			Bounty:     0,
+			Url:        link,
+			Active:     true,
+			Owner:      owner,
+			Repo:       repo,
+			Number:     number,
 			LndConnect: lndconnect,
-			Payments: make(map[string]bool),
+			Payments:   make(map[string]bool),
 		}
 
 		clientconn, err := lnd.ConnectFromLndConnectWithTimeout(ctx, bountyIssue.LndConnect, time.Second*5)
@@ -103,7 +103,7 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 		bountyIssue.Pubkey = payreq.Destination
 		err = srv.store.Add(ctx, bountyIssue)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 		commentId, err := srv.ghClient.AddComment(ctx, bountyIssue)
 		if err != nil {
@@ -121,7 +121,7 @@ func (srv *IssueService) AddBountyIssue(ctx context.Context, id int64, link stri
 		return nil, err
 	}
 
-	return bountyIssue,nil
+	return bountyIssue, nil
 }
 
 func (srv *IssueService) CloseIssue(ctx context.Context, id int64) error {
@@ -152,7 +152,7 @@ func (srv *IssueService) GetBountyInvoice(ctx context.Context, id, sats int64) (
 		return "", err
 	}
 	if !bountyIssue.Active {
-		return "",InactiveError
+		return "", InactiveError
 	}
 	clientconn, err := lnd.ConnectFromLndConnectWithTimeout(ctx, bountyIssue.LndConnect, time.Second*5)
 	if err != nil {
@@ -162,8 +162,8 @@ func (srv *IssueService) GetBountyInvoice(ctx context.Context, id, sats int64) (
 	lndClient := lnrpc.NewLightningClient(clientconn)
 	expiry := 600
 	invoice := &lnrpc.Invoice{
-		Memo: fmt.Sprintf("Add bounty on %s", id),
-		Value: sats,
+		Memo:   fmt.Sprintf("Add bounty on %s", id),
+		Value:  sats,
 		Expiry: int64(expiry),
 	}
 	inv, err := lndClient.AddInvoice(ctx, invoice)
@@ -183,7 +183,7 @@ func (srv *IssueService) GetBountyInvoice(ctx context.Context, id, sats int64) (
 
 func (srv *IssueService) ListenPayment(issue *BountyIssue, rHash []byte, payreqString string, sats int64) {
 	fmt.Printf("started listening on payment invoice %v on %v \n", payreqString, issue)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second * time.Duration(120))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(120))
 	defer cancel()
 	clientconn, err := lnd.ConnectFromLndConnectWithTimeout(ctx, issue.LndConnect, time.Second*10)
 	if err != nil {
@@ -192,13 +192,13 @@ func (srv *IssueService) ListenPayment(issue *BountyIssue, rHash []byte, payreqS
 	}
 	defer clientconn.Close()
 	invoicesClient := invoicesrpc.NewInvoicesClient(clientconn)
-	invoicesSub, err := invoicesClient.SubscribeSingleInvoice(ctx,&invoicesrpc.SubscribeSingleInvoiceRequest{
+	invoicesSub, err := invoicesClient.SubscribeSingleInvoice(ctx, &invoicesrpc.SubscribeSingleInvoiceRequest{
 		RHash: rHash,
 	})
 	for {
 		select {
-			case <-ctx.Done():
-				return
+		case <-ctx.Done():
+			return
 		default:
 			inv, err := invoicesSub.Recv()
 			if err != nil {
@@ -250,12 +250,12 @@ func (srv *IssueService) RemovePayment(ctx context.Context, issue *BountyIssue, 
 	return nil
 }
 
-func (srv *IssueService) RecoverPayments(ctx context.Context) error{
+func (srv *IssueService) RecoverPayments(ctx context.Context) error {
 	bountyIssues, err := srv.store.ListAll(ctx)
 	if err != nil {
 		return err
 	}
-	for _,bountyIssue := range bountyIssues {
+	for _, bountyIssue := range bountyIssues {
 		err = srv.handleBountyIssueRecovery(ctx, bountyIssue)
 		if err != nil {
 			fmt.Printf("error handling recovery ond %v:  %v", bountyIssue, err)
@@ -263,7 +263,7 @@ func (srv *IssueService) RecoverPayments(ctx context.Context) error{
 	}
 	return nil
 }
-func (srv *IssueService) checkPayment(ctx context.Context, lndClient lnrpc.LightningClient, issue *BountyIssue, payreqString string ) error{
+func (srv *IssueService) checkPayment(ctx context.Context, lndClient lnrpc.LightningClient, issue *BountyIssue, payreqString string) error {
 	payreq, err := srv.lndClient.DecodePayReq(ctx, &lnrpc.PayReqString{PayReq: payreqString})
 	if err != nil {
 		return err
@@ -278,22 +278,22 @@ func (srv *IssueService) checkPayment(ctx context.Context, lndClient lnrpc.Light
 	}
 	switch invoice.State {
 	case lnrpc.Invoice_SETTLED:
-		err = srv.SettleInvoice(ctx, issue, payreqString,invoice.Value)
-		if err != nil{
+		err = srv.SettleInvoice(ctx, issue, payreqString, invoice.Value)
+		if err != nil {
 			return err
 		}
 		return nil
 
 	case lnrpc.Invoice_CANCELED:
 		err = srv.RemovePayment(ctx, issue, payreqString)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 		return nil
 	case lnrpc.Invoice_OPEN:
 		fallthrough
 	case lnrpc.Invoice_ACCEPTED:
-		go srv.ListenPayment(issue,rHashBytes, payreqString, invoice.Value)
+		go srv.ListenPayment(issue, rHashBytes, payreqString, invoice.Value)
 	}
 	return nil
 }
@@ -303,7 +303,7 @@ func (srv *IssueService) handleBountyIssueRecovery(ctx context.Context, issue *B
 		return err
 	}
 	defer cc.Close()
-	for payreqString,v := range issue.Payments {
+	for payreqString, v := range issue.Payments {
 		if v {
 			continue
 		}
@@ -315,12 +315,10 @@ func (srv *IssueService) handleBountyIssueRecovery(ctx context.Context, issue *B
 	return nil
 }
 
-
 func clientConnFromIssue(ctx context.Context, issue *BountyIssue) (*grpc.ClientConn, error) {
 	clientconn, err := lnd.ConnectFromLndConnectWithTimeout(ctx, issue.LndConnect, time.Second*10)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return clientconn, err
 }
-

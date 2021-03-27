@@ -10,7 +10,7 @@ import (
 
 var (
 	bountyIssuesBucket = []byte("bounty_issues")
-	ErrDoesNotExist         = fmt.Errorf("does not exist")
+	ErrDoesNotExist    = fmt.Errorf("does not exist")
 )
 
 type BountyIssueStore struct {
@@ -43,7 +43,7 @@ func (store *BountyIssueStore) Add(ctx context.Context, issue *BountyIssue) erro
 func (store *BountyIssueStore) Update(ctx context.Context, issue *BountyIssue) error {
 	tx, err := store.db.Begin(true)
 	if err != nil {
-		return  err
+		return err
 	}
 	defer tx.Rollback()
 
