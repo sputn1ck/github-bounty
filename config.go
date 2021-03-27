@@ -1,11 +1,16 @@
 package config
 
+import "embed"
+
 var (
 	DefaultSecret = "secret"
 	DefaultHttpUrl = "http://localhost:8123"
 	DefaultListenAddress = "0.0.0.0:8123"
 
 	DefaultDbFilePath = "./db"
+
+	//go:embed dist/*
+	Webapp embed.FS
 )
 
 type Config struct {

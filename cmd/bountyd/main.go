@@ -61,7 +61,7 @@ func run() error {
 	// create admin lnd client
 	cc, err := lnd.ConnectFromLndConnectWithTimeout(ctx, cfg.LndConnect, time.Second*10)
 	if err != nil {
-		return err
+		return fmt.Errorf("connecting to lnd error: %v", err)
 	}
 	defer cc.Close()
 	lndClient := lnrpc.NewLightningClient(cc)
@@ -94,7 +94,10 @@ func run() error {
 		return err
 	}
 
-	webhookHandler := tracker.NewWebhookHandler(issueService, "secret", meta.Hooks)
+	webhookHandler,err := tracker.NewWebhookHandler(issueService, "secret", meta.Hooks)
+	if err != nil {
+		return fmt.Errorf("error starting http handler %v",err)
+	}
 	go startHandler(webhookHandler, cfg.ListenAddress)
 	<-shutdown
 	return nil

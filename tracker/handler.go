@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	config "github-bounty"
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/go-playground/webhooks.v5/github"
+	"html/template"
 	"log"
 	"net"
 	"net/http"
@@ -15,6 +17,7 @@ import (
 const (
 	webhookPath = "/wh"
 	invoicePath = "/invoice"
+	invoicePagePath = "/page"
 
 	claimPath = "/claim"
 	amtkey = "amt"
@@ -24,13 +27,21 @@ const (
 type WebhookHandler struct {
 	is *IssueService
 	webhook *github.Webhook
+	tmpl *template.Template
 
 	ipRange []string
 }
 
-func NewWebhookHandler(is *IssueService, secret string, ipRange []string) *WebhookHandler {
-	webhook, _ := github.New(github.Options.Secret(secret))
-	return &WebhookHandler{is: is, webhook: webhook, ipRange: ipRange}
+func NewWebhookHandler(is *IssueService, secret string, ipRange []string) (*WebhookHandler, error) {
+	tmpl, err := template.ParseFS(config.Webapp, "dist/invoice.html")
+	if err != nil {
+		return nil, err
+	}
+	webhook, err := github.New(github.Options.Secret(secret))
+	if err != nil {
+		return nil, err
+	}
+	return &WebhookHandler{is: is, webhook: webhook, ipRange: ipRange, tmpl: tmpl}, nil
 }
 
 func (wh *WebhookHandler) SetupIpaddress(ip string) {
@@ -41,6 +52,10 @@ type InvoiceResponse struct{
 	Invoice string `json:"invoice"`
 }
 
+type InvoicePageData struct {
+	Invoice string
+}
+
 func (wh *WebhookHandler) StartHandler(address string) error {
 	router := httprouter.New()
 	router.POST(webhookPath, wh.handleWebhook)
@@ -48,10 +63,12 @@ func (wh *WebhookHandler) StartHandler(address string) error {
 
 	router.GET(invoicePath, wh.handleInvoice)
 
+	router.GET(invoicePagePath, wh.handleInvoicePage)
+
+	router.ServeFiles("/static/*filepath", http.FS(config.Webapp))
 	return http.ListenAndServe(address, router)
 }
 func (wh *WebhookHandler) handleInvoice(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-
 	query := r.URL.Query()
 	if len(query) != 2 {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid input, require %s and %s",amtkey, issueidkey))
@@ -81,6 +98,47 @@ func (wh *WebhookHandler) handleInvoice(w http.ResponseWriter, r *http.Request, 
 	writeOkResponse(w, &InvoiceResponse{Invoice:invoice})
 }
 
+func (wh *WebhookHandler) handleInvoicePage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+
+	/*
+	invoice, err := wh.getInvoice(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
+		return
+	}*/
+	data := InvoicePageData{Invoice: "gude"}
+	err := wh.tmpl.Execute(w, data)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
+		return
+	}
+}
+
+func (wh *WebhookHandler) getInvoice(r *http.Request) (string, error) {
+	query := r.URL.Query()
+	if len(query) != 2 {
+		return "",fmt.Errorf("invalid input, require %s and %s",amtkey, issueidkey)
+	}
+	amt := query.Get(amtkey)
+	issueId := query.Get(issueidkey)
+	if amt == "" || issueId == "" {
+		return "",fmt.Errorf("invalid input, require %s and %s",amtkey, issueidkey)
+	}
+	amtInt,err := strconv.Atoi(amt)
+	if err != nil {
+		return "",fmt.Errorf("something went wrong %v",err)
+	}
+	issueIdInt,err := strconv.Atoi(issueId)
+	if err != nil {
+		return "",fmt.Errorf("something went wrong %v",err)
+	}
+	invoice, err := wh.is.GetBountyInvoice(r.Context(), int64(issueIdInt), int64(amtInt))
+	if err != nil {
+		return "",fmt.Errorf("something went wrong %v",err)
+	}
+	return invoice, nil
+}
+
 func writeOkResponse(w http.ResponseWriter, res interface{}) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -94,6 +152,7 @@ func writeError(w http.ResponseWriter, statuscode int, msg string) {
 	w.WriteHeader(statuscode)
 	w.Write([]byte(msg))
 }
+
 func (wh *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	okay, err := wh.checkIps(r)
 	if err != nil  || !okay {

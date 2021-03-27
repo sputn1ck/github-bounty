@@ -1,0 +1,21 @@
+<html>
+<head>
+    <title>Lightning Bounty</title>
+    <script type="text/javascript" src="static/dist/jquery.min.js"></script>
+    <script type="text/javascript" src="static/dist/qrcode.js"></script>
+</head>
+<body>
+<p class="title">Lightning Bounty</p>
+<div id="qrcode" style="width:100px; height:100px; margin-top:15px;"></div>
+{{.Invoice}}
+
+<script type="text/javascript">
+    var qrcode = new QRCode(document.getElementById("qrcode"), {
+        width : 100,
+        height : 100
+    });
+
+    qrcode.makeCode({{.Invoice}});
+</script>
+</body>
+</html>

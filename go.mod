@@ -1,6 +1,6 @@
 module github-bounty
 
-go 1.15
+go 1.16
 
 require (
 	github.com/coreos/bbolt v1.3.3
