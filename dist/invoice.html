@@ -6,8 +6,10 @@
 </head>
 <body>
 <p class="title">Lightning Bounty</p>
-<div id="qrcode" style="width:100px; height:100px; margin-top:15px;"></div>
 {{.Invoice}}
+<br>
+<div id="qrcode" style="width:100px; height:100px; margin-top:15px;"></div>
+
 
 <script type="text/javascript">
     var qrcode = new QRCode(document.getElementById("qrcode"), {
