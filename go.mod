@@ -1,4 +1,4 @@
-module github-bounty
+module github.com/sputn1ck/github-bounty
 
 go 1.16
 

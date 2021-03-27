@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	config "github-bounty"
-	"github-bounty/lnd"
-	"github-bounty/tracker"
+	config "github.com/sputn1ck/github-bounty"
+	"github.com/sputn1ck/github-bounty/lnd"
+	"github.com/sputn1ck/github-bounty/tracker"
 	bbolt2 "github.com/coreos/bbolt"
 	"github.com/google/go-github/v33/github"
 	"github.com/jessevdk/go-flags"

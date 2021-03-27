@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	config "github-bounty"
+	config "github.com/sputn1ck/github-bounty"
 	"github.com/julienschmidt/httprouter"
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"html/template"
