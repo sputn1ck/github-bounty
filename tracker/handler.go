@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
+	config "github.com/sputn1ck/github-bounty"
 	"gopkg.in/go-playground/webhooks.v5/github"
 	"html/template"
 	"log"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -30,18 +32,19 @@ type WebhookHandler struct {
 	tmpl    *template.Template
 
 	ipRange []string
+	cfg *config.Config
 }
 
-func NewWebhookHandler(is *IssueService, secret string, ipRange []string) (*WebhookHandler, error) {
-	tmpl, err := template.ParseFiles("./dist/invoice.html")
+func NewWebhookHandler(cfg *config.Config, is *IssueService, ipRange []string) (*WebhookHandler, error) {
+	tmpl, err := template.ParseFiles(filepath.Join(cfg.StaticFilePath, "invoice.html"))
 	if err != nil {
 		return nil, err
 	}
-	webhook, err := github.New(github.Options.Secret(secret))
+	webhook, err := github.New(github.Options.Secret(cfg.Secret))
 	if err != nil {
 		return nil, err
 	}
-	return &WebhookHandler{is: is, webhook: webhook, ipRange: ipRange, tmpl: tmpl}, nil
+	return &WebhookHandler{is: is, webhook: webhook, ipRange: ipRange, tmpl: tmpl, cfg: cfg}, nil
 }
 
 func (wh *WebhookHandler) SetupIpaddress(ip string) {
@@ -65,7 +68,7 @@ func (wh *WebhookHandler) StartHandler(address string) error {
 
 	router.GET(invoicePagePath, wh.handleInvoicePage)
 
-	router.ServeFiles("/static/*filepath", http.Dir("dist"))
+	router.ServeFiles("/static/*filepath", http.Dir(wh.cfg.StaticFilePath))
 	return http.ListenAndServe(address, router)
 }
 func (wh *WebhookHandler) handleInvoice(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -99,13 +102,13 @@ func (wh *WebhookHandler) handleInvoice(w http.ResponseWriter, r *http.Request, 
 }
 
 func (wh *WebhookHandler) handleInvoicePage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	//invoice, err := wh.getInvoice(r)
-	//if err != nil {
-	//	writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
-	//	return
-	//}
-	data := InvoicePageData{Invoice: "gude"}
-	err := wh.tmpl.Execute(w, data)
+	invoice, err := wh.getInvoice(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v",err))
+		return
+	}
+	data := InvoicePageData{Invoice: invoice}
+	err = wh.tmpl.Execute(w, data)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("something went wrong %v", err))
 		return

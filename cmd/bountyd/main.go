@@ -94,7 +94,7 @@ func run() error {
 		return err
 	}
 
-	webhookHandler, err := tracker.NewWebhookHandler(issueService, "secret", meta.Hooks)
+	webhookHandler, err := tracker.NewWebhookHandler(cfg, issueService, meta.Hooks)
 	if err != nil {
 		return fmt.Errorf("error starting http handler %v", err)
 	}
