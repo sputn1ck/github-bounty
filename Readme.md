@@ -1,10 +1,10 @@
-# Github-Bounty
+# GitHub-Bounty
 
-Github bounty can be used as a way do collect donations for specific issues.
+GitHub bounty can be used to collect donations for GitHub Issues.
 
-Example use-cases are shown in this repos issues.
+Example use-cases are shown in ![Issues](https://github.com/sputn1ck/github-bounty/issues).
 
-You can run it yourself (more privacy, usable in private repos) or use my hosted service (non-custodial, only useable in public repos).
+Host it yourself (more privacy, usable in private repos) or use my hosted service (non-custodial, only useable in public repos).
 
 ## Usage
 
@@ -20,7 +20,7 @@ In order to use our hosted service you need to have a lnd node running with a pu
 
 ![eventsettings](./img/eventsettings.jpg)
    
-4. Your repo should now be actived. You can now add the 'bounty' label to any issue
+4. Your repo should now be active. You can now add the 'bounty' label to any issue
 
 ![label](./img/label.jpg)
    
